@@ -23,8 +23,13 @@ function App() {
   const location = useLocation()
   const route = location.pathname
 
+  // Auth + global session state
   const { currentUser, isAuthenticated, hasAuthenticatedUser, login, register, logout } = useAuthSession()
+
+  // Flash message state
   const { flash, showFlash, clearFlash } = useFlash()
+
+  // Asset state management
   const {
     assets,
     myAssets,
@@ -34,13 +39,29 @@ function App() {
     deleteAsset: removeAsset,
     clearAssetState,
   } = useAssets()
-  const { tickets, myTickets, replaceTicketsData, createTicket, updateTicketStatus, clearTicketState } = useTickets(currentUser)
+
+  // Ticket state management (depends on current user)
+  const {
+    tickets,
+    myTickets,
+    replaceTicketsData,
+    createTicket,
+    updateTicketStatus,
+    clearTicketState,
+  } = useTickets(currentUser)
 
   const isHydratingSession = false
 
-  const { users, assets: bootstrappedAssets, myAssets: bootstrappedMyAssets, tickets: bootstrappedTickets, error: bootstrapError } =
-    useBootstrapData(currentUser, isAuthenticated)
+  // Initial bootstrap data (users, assets, tickets)
+  const {
+    users,
+    assets: bootstrappedAssets,
+    myAssets: bootstrappedMyAssets,
+    tickets: bootstrappedTickets,
+    error: bootstrapError,
+  } = useBootstrapData(currentUser, isAuthenticated)
 
+  // Derived admin dashboard statistics
   const adminStats = useMemo(() => {
     const totalAssets = assets.length
     const assignedAssets = assets.filter((asset) => asset.status === 'Assigned').length
@@ -51,11 +72,13 @@ function App() {
     return { totalAssets, assignedAssets, inMaintenance, openTickets, totalUsers }
   }, [assets, tickets, users])
 
+  // Clear all protected state on logout
   const clearProtectedState = useCallback(() => {
     clearAssetState()
     clearTicketState()
   }, [clearAssetState, clearTicketState])
 
+  // Centralised handlers for navigation, auth, and updates
   const {
     appNavigate,
     handleLogin,
@@ -77,14 +100,17 @@ function App() {
     removeAsset,
   })
 
+  // Sync bootstrapped asset data into local state
   useEffect(() => {
     replaceAssetsData(bootstrappedAssets, bootstrappedMyAssets)
   }, [bootstrappedAssets, bootstrappedMyAssets, replaceAssetsData])
 
+  // Sync bootstrapped ticket data into local state
   useEffect(() => {
     replaceTicketsData(bootstrappedTickets)
   }, [bootstrappedTickets, replaceTicketsData])
 
+  // Surface bootstrap errors to the UI
   useEffect(() => {
     if (bootstrapError) {
       showFlash('error', bootstrapError)
@@ -94,7 +120,7 @@ function App() {
   useEffect(() => {
     if (!currentUser || !isAuthenticated) return
 
-    // Keep authenticated users away from public auth routes.
+    // Redirect authenticated users away from public routes
     if (route === '/' || route === '/login' || route === '/register') {
       navigate('/dashboard', { replace: true })
     }
@@ -114,7 +140,14 @@ function App() {
           <Route path="/login" element={<LoginPage onLogin={handleLogin} navigate={appNavigate} />} />
           <Route path="/register" element={<RegisterPage onRegister={handleRegister} navigate={appNavigate} />} />
 
-          <Route element={<ProtectedLayout isAuthenticated={hasAuthenticatedUser()} isHydratingSession={isHydratingSession} />}>
+          <Route
+            element={
+              <ProtectedLayout
+                isAuthenticated={hasAuthenticatedUser()}
+                isHydratingSession={isHydratingSession}
+              />
+            }
+          >
             <Route
               path="/dashboard"
               element={
