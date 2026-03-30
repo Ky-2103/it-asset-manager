@@ -7,11 +7,12 @@ type AuthSessionState = {
   currentUser: AppUser | null
 }
 
+// Initialise session state from localStorage and validate token
 function getInitialSessionState(): AuthSessionState {
   const token = localStorage.getItem('token')
 
   if (!token) {
-    // Defensive cleanup in case a previous session left stale user data behind.
+    // Clean up any stale user data
     localStorage.removeItem('currentUser')
     return { token: null, currentUser: null }
   }
@@ -19,25 +20,30 @@ function getInitialSessionState(): AuthSessionState {
   const currentUser = getUserFromToken(token)
 
   if (!currentUser) {
-    // Expired or malformed tokens should never stay in storage.
+    // Remove invalid or expired session data
     localStorage.removeItem('token')
     localStorage.removeItem('currentUser')
     return { token: null, currentUser: null }
   }
 
+  // Ensure stored user is in sync with token
   localStorage.setItem('currentUser', JSON.stringify(currentUser))
   return { token, currentUser }
 }
 
+// Manage authentication session state and actions
 export function useAuthSession() {
   const [session, setSession] = useState<AuthSessionState>(getInitialSessionState)
 
+  // Whether the user is currently authenticated
   const isAuthenticated = Boolean(session.token && session.currentUser)
 
+  // Check if a valid authenticated user exists
   const hasAuthenticatedUser = useCallback(() => {
     return Boolean(session.currentUser && session.token)
   }, [session.currentUser, session.token])
 
+  // Check if current user has a specific role
   const hasRole = useCallback(
     (role: AppUser['role']) => {
       return Boolean(session.currentUser && session.currentUser.role === role)
@@ -45,6 +51,7 @@ export function useAuthSession() {
     [session.currentUser],
   )
 
+  // Handle login and persist session data
   const login = useCallback(async (credentials: { username: string; password: string }) => {
     const data = await loginRequest(credentials)
 
@@ -67,14 +74,17 @@ export function useAuthSession() {
     return resolvedUser
   }, [])
 
+  // Handle registration with basic validation
   const register = useCallback(
     async (payload: { username: string; email: string; password: string; confirmPassword: string }) => {
       const { username, email, password, confirmPassword } = payload
 
+      // Ensure all required fields are filled
       if (!username || !email || !password || !confirmPassword) {
         throw new Error('Please complete all registration fields.')
       }
 
+      // Ensure passwords match
       if (password !== confirmPassword) {
         throw new Error('Password and confirmation do not match.')
       }
@@ -84,12 +94,14 @@ export function useAuthSession() {
     [],
   )
 
+  // Clear all session data from storage and state
   const clearSessionState = useCallback(() => {
     localStorage.removeItem('token')
     localStorage.removeItem('currentUser')
     setSession({ token: null, currentUser: null })
   }, [])
 
+  // Logout user by clearing session
   const logout = useCallback(() => {
     clearSessionState()
   }, [clearSessionState])
