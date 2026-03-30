@@ -17,6 +17,7 @@ type UseAppHandlersArgs = {
   removeAsset: (assetId: number) => Promise<void>
 }
 
+// Centralised app handlers for navigation, auth, and key actions
 export function useAppHandlers({
   navigate,
   clearFlash,
@@ -29,6 +30,8 @@ export function useAppHandlers({
   updateAsset,
   removeAsset,
 }: UseAppHandlersArgs) {
+
+  // Navigate and clear any existing flash messages
   const appNavigate = useCallback<Navigate>(
     (to, options) => {
       navigate(to, { replace: options?.replace })
@@ -37,6 +40,7 @@ export function useAppHandlers({
     [clearFlash, navigate],
   )
 
+  // Handle user login flow
   const handleLogin = useCallback(
     async (credentials: { username: string; password: string }) => {
       const resolvedUser = await login(credentials)
@@ -46,6 +50,7 @@ export function useAppHandlers({
     [appNavigate, login, showFlash],
   )
 
+  // Handle user registration flow
   const handleRegister = useCallback(
     async (payload: { username: string; email: string; password: string; confirmPassword: string }) => {
       await register(payload)
@@ -55,6 +60,7 @@ export function useAppHandlers({
     [appNavigate, register, showFlash],
   )
 
+  // Handle logout and clear protected state
   const handleLogout = useCallback(() => {
     logout()
     clearProtectedState()
@@ -62,6 +68,7 @@ export function useAppHandlers({
     showFlash('success', 'You have been logged out.')
   }, [appNavigate, clearProtectedState, logout, showFlash])
 
+  // Update ticket status with error handling
   const handleUpdateTicketStatus = useCallback(
     async (ticketId: number, status: TicketStatus) => {
       try {
@@ -74,8 +81,10 @@ export function useAppHandlers({
     [showFlash, updateTicketStatus],
   )
 
+  // Update asset with validation and error handling
   const handleUpdateAsset = useCallback(
     async (assetId: number, payload: { status: Status; assigned_user_id: number | null }) => {
+      // Ensure assigned user is provided when status is 'Assigned'
       if (payload.status === 'Assigned' && !payload.assigned_user_id) {
         const message = 'assigned_user_id is required when status is Assigned.'
         showFlash('error', message)
@@ -94,6 +103,7 @@ export function useAppHandlers({
     [showFlash, updateAsset],
   )
 
+  // Handle asset deletion with confirmation and error handling
   const handleDeleteAsset = useCallback(
     async (assetId: number) => {
       if (!window.confirm('Delete this asset? This action cannot be undone.')) return
